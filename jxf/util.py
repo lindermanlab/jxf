@@ -1,8 +1,9 @@
 import inspect
 from functools import wraps, partial
 from enum import IntEnum
-import jax.numpy as np
 
+import jax.numpy as np
+from jax.flatten_util import ravel_pytree
 
 class Verbosity(IntEnum):
     OFF = 0
