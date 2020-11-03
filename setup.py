@@ -7,6 +7,6 @@ setup(name='jxf',
       author='Scott Linderman',
       author_email='scott.linderman@stanford.edu',
       url='https://github.com/lindermanlab/jxf',
-      install_requires=['jax', 'jaxlib', 'tensorflow-probability'],
+      install_requires=['jax', 'jaxlib', 'tfp-nightly'],
       packages=['jxf'],
     )
