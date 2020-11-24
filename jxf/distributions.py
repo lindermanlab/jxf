@@ -254,8 +254,8 @@ class LinearAutoRegression(ExponentialFamilyDistribution):
     """
     def __init__(self, weights, covariance_matrix, num_lags=1, covariate_dim=0, fit_intercept=True):
         # check weights shape
+        # assert in_dim == num_lags * out_dim + covariate_dim + fit_intercept
         out_dim, in_dim = weights.shape[-2:]
-        assert in_dim == num_lags * out_dim + covariate_dim + fit_intercept
         self.weights = weights
         self.covariance_matrix = covariance_matrix
         self.num_lags = num_lags
@@ -278,23 +278,25 @@ class LinearAutoRegression(ExponentialFamilyDistribution):
         return cls(*params)
 
     @property
+    def dim(self):
+        return self.weights.shape[0]
+
+    @property
     def autoregression_weights(self):
-        out_dim = self.weights.shape[0]
-        num_lags = self.num_lags
-        As = self.weights[:, :out_dim * num_lags]
-        return np.array(np.split(As, num_lags, axis=1))
+        As = self.weights[:, :self.dim * self.num_lags]
+        return np.array(np.split(As, self.num_lags, axis=1))
 
     @property
     def covariate_weights(self):
-        out_dim = self.weights.shape[0]
-        num_lags = self.num_lags
-        covariate_dim = self.covariate_dim
-        return self.weights[:, (out_dim * num_lags):(out_dim * num_lags + covariate_dim)]
+        dim, num_lags, covariate_dim = self.dim, self.num_lags, self.covariate_dim
+        return self.weights[:, (dim * num_lags):(dim * num_lags + covariate_dim)]
 
     @property
     def bias(self):
-        out_dim = self.weights.shape[0]
-        return self.weights[:, -1] if self.fit_intercept else np.zeros(out_dim)
+        return lax.cond(self.fit_intercept,
+                        lambda _: self.weights[:,-1],
+                        lambda _: np.zeros(self.dim),
+                        operand=None)
 
     @staticmethod
     def sufficient_statistics(data,
@@ -324,17 +326,21 @@ class LinearAutoRegression(ExponentialFamilyDistribution):
     def dimension(self):
         return self.weights.shape[-2:]
 
-    def sample(self, rng, covariates=None, sample_shape=()):
-        raise NotImplementedError
-        # prediction = covariates @ self.weights.T
-        # data = jax.random.multivariate_normal(rng, prediction, self.covariance_matrix)
-        # return data
+    def sample(self, seed, past_data, covariates=None):
+        prediction = self.bias
+        for lag, A in enumerate(self.autoregression_weights):
+            prediction += past_data[-(lag + 1)] @ A.T
+        if covariates is not None:
+            prediction += covariates @ self.weights.T
+        return jax.random.multivariate_normal(seed, prediction, self.covariance_matrix)
 
     def log_prob(self, data, covariates=None, **kwargs):
-        raise NotImplementedError
-        # predictions = covariates @ self.weights.T
-        # lps = spst.multivariate_normal.logpdf(data, predictions, self.covariance_matrix)
-        # return np.array(lps)
+        predictions = self.bias * np.ones_like(data)
+        for lag, A in enumerate(self.autoregression_weights):
+            predictions[lag:] += data[:-(lag + 1)] @ A.T
+        if covariates is not None:
+            predictions += covariates @ self.weights.T
+        return spst.multivariate_normal.logpdf(data, predictions, self.covariance_matrix)
 
 
 class MultivariateStudentTRegression:
@@ -1214,6 +1220,7 @@ register_expfam(Bernoulli, Beta)
 register_expfam(Binomial, Beta)
 register_expfam(Categorical, Dirichlet)
 register_expfam(LinearRegression, MatrixNormalInverseWishart)
+register_expfam(LinearAutoRegression, MatrixNormalInverseWishart)
 register_expfam(Multinomial, Dirichlet)
 register_expfam(MultivariateNormalFullCovariance, NormalInverseWishart)
 register_expfam(MultivariateNormalTriL, NormalInverseWishart)
