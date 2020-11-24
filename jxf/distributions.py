@@ -4,6 +4,7 @@ import jax.scipy.stats as spst
 import jax.random
 from jax import lax
 from jax.nn import softplus
+from jax.ops import index, index_add
 from jax.tree_util import register_pytree_node, register_pytree_node_class
 import tensorflow_probability.substrates.jax.distributions as dists
 
@@ -255,7 +256,6 @@ class LinearAutoRegression(ExponentialFamilyDistribution):
     def __init__(self, weights, covariance_matrix, num_lags=1, covariate_dim=0, fit_intercept=True):
         # check weights shape
         # assert in_dim == num_lags * out_dim + covariate_dim + fit_intercept
-        out_dim, in_dim = weights.shape[-2:]
         self.weights = weights
         self.covariance_matrix = covariance_matrix
         self.num_lags = num_lags
@@ -336,10 +336,22 @@ class LinearAutoRegression(ExponentialFamilyDistribution):
 
     def log_prob(self, data, covariates=None, **kwargs):
         predictions = self.bias * np.ones_like(data)
+
         for lag, A in enumerate(self.autoregression_weights):
-            predictions[lag:] += data[:-(lag + 1)] @ A.T
+            # predictions[(lag + 1):] += data[:-(lag + 1)] @ A.T
+            predictions = index_add(predictions,
+                                    index[(lag + 1):],
+                                    data[:-(lag + 1)] @ A.T)
+
+        # Add the covariates, if given
         if covariates is not None:
-            predictions += covariates @ self.weights.T
+            predictions += covariates @ self.covariate_weights.T
+
+        # predictions += lax.cond(covariates is not None,
+        #                         lambda _: covariates @ self.covariate_weights.T,
+        #                         lambda _: 0,
+        #                         operand=None)
+
         return spst.multivariate_normal.logpdf(data, predictions, self.covariance_matrix)
 
 
