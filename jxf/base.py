@@ -173,33 +173,44 @@ class ExponentialFamilyDistribution:
 
         Returns:
 
-            init_fun :: ParameterPytree ndarray -> OptimizerState
-            update_fun :: minibatch, itr, OptimizerState -> OptimizerState
-            get_params :: OptimizerState -> ParameterPytree ndarray
+            initial_state    :: dictionary of optimizer state
+                                (sufficient statistics and number of datapoints)
+            update           :: minibatch, itr, state -> state
+            get_distribution :: state -> Distribution object
         """
         initial_state = dict(suff_stats=None, num_datapoints=0.0)
         schedule = make_schedule(step_size)
 
         @format_dataset
-        def update(dataset, itr, state, weights=None, scale_factor=1.0):
+        def update(dataset,
+                   itr,
+                   state,
+                   weights=None,
+                   suff_stats=None,
+                   num_datapoints=0.0,
+                   scale_factor=1.0):
+
             # Compute the sufficient statistics and the number of datapoints
-            suff_stats = None
-            num_datapoints = 0.0
-            for data_dict, these_weights in zip(dataset, weights):
-                these_stats = cls.sufficient_statistics(**data_dict, **kwargs)
+            if suff_stats is None:
+                num_datapoints = 0.0
+                for data_dict, these_weights in zip(dataset, weights):
+                    these_stats = cls.sufficient_statistics(**data_dict, **kwargs)
 
-                # weight the statistics if weights are given
-                if these_weights is not None:
-                    these_stats = tuple(np.tensordot(these_weights, s, axes=(0, 0))
-                                        for s in these_stats)
-                else:
-                    these_stats = tuple(s.sum(axis=0) for s in these_stats)
+                    # weight the statistics if weights are given
+                    if these_weights is not None:
+                        these_stats = tuple(np.tensordot(these_weights, s, axes=(0, 0))
+                                            for s in these_stats)
+                    else:
+                        these_stats = tuple(s.sum(axis=0) for s in these_stats)
 
-                # add to our accumulated statistics
-                suff_stats = sum_tuples(suff_stats, these_stats)
+                    # add to our accumulated statistics
+                    suff_stats = sum_tuples(suff_stats, these_stats)
 
-                # update the number of datapoints
-                num_datapoints += these_weights.sum()
+                    # update the number of datapoints
+                    num_datapoints += these_weights.sum()
+            else:
+                # assume suff_stats and num_datapoints are given
+                pass
 
             # Scale the sufficient statistics by the given scale factor.
             # This is as if the sufficient statistics were accumulated

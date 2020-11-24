@@ -277,6 +277,25 @@ class LinearAutoRegression(ExponentialFamilyDistribution):
     def from_params(cls, params):
         return cls(*params)
 
+    @property
+    def autoregression_weights(self):
+        out_dim = self.weights.shape[0]
+        num_lags = self.num_lags
+        As = self.weights[:, :out_dim * num_lags]
+        return np.array(np.split(As, num_lags, axis=1))
+
+    @property
+    def covariate_weights(self):
+        out_dim = self.weights.shape[0]
+        num_lags = self.num_lags
+        covariate_dim = self.covariate_dim
+        return self.weights[:, (out_dim * num_lags):(out_dim * num_lags + covariate_dim)]
+
+    @property
+    def bias(self):
+        out_dim = self.weights.shape[0]
+        return self.weights[:, -1] if self.fit_intercept else np.zeros(out_dim)
+
     @staticmethod
     def sufficient_statistics(data,
                               covariates=None,
