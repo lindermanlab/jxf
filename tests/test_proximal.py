@@ -16,8 +16,8 @@ def test_normal(shape=(10000,), num_epochs=25, batch_size=100):
     for itr in range(num_epochs):
         for batch_itr in range(num_batches):
             offset = batch_itr * batch_size
-            state = update(data[offset:offset+batch_size],
-                           itr * num_batches + batch_itr,
+            state = update(itr * num_batches + batch_itr,
+                           data[offset:offset+batch_size],
                            state,
                            scale_factor=shape[0] / batch_size)
             norm = get_dist(state)

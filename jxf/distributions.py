@@ -6,13 +6,14 @@ from jax import lax
 from jax.nn import softplus
 from jax.ops import index, index_add
 from jax.tree_util import register_pytree_node, register_pytree_node_class
-import tensorflow_probability.substrates.jax.distributions as dists
+import tensorflow_probability.substrates.jax.distributions as tfp_dists
 
 from jxf.base import ExponentialFamilyDistribution, \
     ConjugatePrior, register_expfam, CompoundDistribution, register_compound
 from jxf.util import one_hot
 
-class Bernoulli(ExponentialFamilyDistribution, dists.Bernoulli):
+
+class Bernoulli(ExponentialFamilyDistribution, tfp_dists.Bernoulli):
     r"""
     The Bernoulli distribution has pmf
 
@@ -36,7 +37,7 @@ class Bernoulli(ExponentialFamilyDistribution, dists.Bernoulli):
         return (data,)
 
 
-class Beta(ConjugatePrior, dists.Beta):
+class Beta(ConjugatePrior, tfp_dists.Beta):
     r"""
     The beta distribution has pdf
 
@@ -73,7 +74,7 @@ class Beta(ConjugatePrior, dists.Beta):
         return (self.concentration1 + self.concentration0 - 2) / self.total_count
 
 
-class Binomial(ExponentialFamilyDistribution, dists.Binomial):
+class Binomial(ExponentialFamilyDistribution, tfp_dists.Binomial):
     r"""
     The Bernoulli distribution has pmf
 
@@ -97,7 +98,7 @@ class Binomial(ExponentialFamilyDistribution, dists.Binomial):
         return (data,)
 
 
-class Categorical(ExponentialFamilyDistribution, dists.Categorical):
+class Categorical(ExponentialFamilyDistribution, tfp_dists.Categorical):
     r"""
     The Categorical distribution has pmf
 
@@ -131,7 +132,7 @@ class Categorical(ExponentialFamilyDistribution, dists.Categorical):
         return (data[..., None] == np.arange(num_classes - 1),)
 
 
-class Dirichlet(ConjugatePrior, dists.Dirichlet):
+class Dirichlet(ConjugatePrior, tfp_dists.Dirichlet):
     r"""
     The Dirichlet distribution has pdf
 
@@ -172,7 +173,7 @@ class Dirichlet(ConjugatePrior, dists.Dirichlet):
         return (np.sum(self.concentration, axis=-1) - self.concentration.shape[-1]) / self.total_count
 
 
-class Gamma(ConjugatePrior, dists.Gamma):
+class Gamma(ConjugatePrior, tfp_dists.Gamma):
     r"""
     The Gamma pdf is
 
@@ -287,10 +288,11 @@ class MatrixNormalInverseWishart(object):
      `s_i = 0` for `i=1..3`.
     """
     def __init__(self, M0, V0, nu0, Psi0):
+        symmetrize = lambda X: 0.5 * (X + X.T)
         self.M0 = M0
-        self.V0 = V0
+        self.V0 = symmetrize(V0)
         self.nu0 = nu0
-        self.Psi0 = Psi0
+        self.Psi0 = symmetrize(Psi0)
 
     def tree_flatten(self):
         return ((self.M0, self.V0, self.nu0, self.Psi0), None)
@@ -414,10 +416,13 @@ class MatrixNormalInverseWishart(object):
         .. math::
             \Sigma^* = \Psi_0 / (\nu_0 + p + n + 1)
         """
-        return self.M0, self.Psi0 / (self.nu0 + self.in_dim + self.out_dim + 1)
+        A = self.M0
+        Sigma = self.Psi0 / (self.nu0 + self.in_dim + self.out_dim + 1)
+        Sigma += 1e-4 * np.eye(self.out_dim)
+        return A, Sigma
 
 
-class Multinomial(ExponentialFamilyDistribution, dists.Multinomial):
+class Multinomial(ExponentialFamilyDistribution, tfp_dists.Multinomial):
     r"""
     The Multinomial distribution has pmf
 
@@ -451,7 +456,7 @@ class Multinomial(ExponentialFamilyDistribution, dists.Multinomial):
 
 
 class MultivariateNormalFullCovariance(ExponentialFamilyDistribution,
-                                       dists.MultivariateNormalFullCovariance):
+                                       tfp_dists.MultivariateNormalFullCovariance):
     @classmethod
     def from_params(cls, params):
         return cls(*params)
@@ -464,7 +469,7 @@ class MultivariateNormalFullCovariance(ExponentialFamilyDistribution,
 
 
 class MultivariateNormalTriL(ExponentialFamilyDistribution,
-                             dists.MultivariateNormalTriL):
+                             tfp_dists.MultivariateNormalTriL):
     @classmethod
     def from_params(cls, params):
         loc, covariance = params
@@ -611,7 +616,7 @@ class MultivariateStudentTTril(CompoundDistribution):
         return lp
 
 
-class Normal(ExponentialFamilyDistribution, dists.Normal):
+class Normal(ExponentialFamilyDistribution, tfp_dists.Normal):
     @classmethod
     def from_params(cls, params):
         loc, variance = params
@@ -829,7 +834,7 @@ class NormalInverseWishart(object):
         return self.mu0, self.Psi0 / (self.nu0 + self.dim + 2)
 
 
-class Poisson(ExponentialFamilyDistribution, dists.Poisson):
+class Poisson(ExponentialFamilyDistribution, tfp_dists.Poisson):
     @classmethod
     def from_params(cls, params):
         return cls(rate=params)
@@ -839,7 +844,7 @@ class Poisson(ExponentialFamilyDistribution, dists.Poisson):
         return (data,)
 
 
-class StudentT(CompoundDistribution, dists.StudentT):
+class StudentT(CompoundDistribution, tfp_dists.StudentT):
     """A Student's T distribution with the CompoundDistribution interface
     for fitting with EM.
     """

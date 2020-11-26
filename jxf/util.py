@@ -90,7 +90,7 @@ def convex_combination(curr_params, new_params, step_size):
     containers with arrays/scalars at the leaves.
     Assume curr and target have the same structure.
     """
-    assert step_size >= 0 and step_size <= 1
+    # assert step_size >= 0 and step_size <= 1
     _curr_params, unravel = ravel_pytree(curr_params)
     _new_params, _ = ravel_pytree(new_params)
     return unravel((1 - step_size) * _curr_params + step_size * _new_params)

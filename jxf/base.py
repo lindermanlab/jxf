@@ -1,14 +1,8 @@
-from warnings import warn
-from functools import partial
 import inspect
-from collections import namedtuple
 
 import jax.numpy as np
-import jax.scipy.special as spsp
-import jax.scipy.stats as spst
 from jax.experimental.optimizers import nesterov, make_schedule
-from jax import jit, lax, vmap, value_and_grad
-from jax.flatten_util import ravel_pytree
+from jax import lax, value_and_grad
 
 from jxf.util import sum_tuples, format_dataset, Verbosity, convex_combination
 
@@ -182,8 +176,8 @@ class ExponentialFamilyDistribution:
         schedule = make_schedule(step_size)
 
         @format_dataset
-        def update(dataset,
-                   itr,
+        def update(itr,
+                   dataset,
                    state,
                    weights=None,
                    suff_stats=None,

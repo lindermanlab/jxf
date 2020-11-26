@@ -2,6 +2,7 @@ import time
 import jax.numpy as np
 import jax.random as jr
 import jxf.distributions as dists
+import jxf.regressions as regrs
 
 def test_normal(shape=(10000,)):
     key = jr.PRNGKey(time.time_ns())
@@ -96,7 +97,7 @@ def test_linear_regression(in_dim=5, out_dim=2, shape=(1000,)):
     covariates = jr.normal(key1, shape + (in_dim,))
     covariates = np.column_stack([covariates, np.ones(shape)])
     data = jr.normal(key2, shape + (out_dim,))
-    lr = dists.LinearRegression.fit(dict(data=data, covariates=covariates))
+    lr = regrs.GaussianLinearRegression.fit(dict(data=data, covariates=covariates))
 
     # compare to least squares fit.  note that the covariance matrix is only the
     # covariance of the residuals if we fit the intercept term
