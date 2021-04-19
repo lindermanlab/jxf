@@ -457,15 +457,24 @@ class Multinomial(ExponentialFamilyDistribution, tfp_dists.Multinomial):
 
 class MultivariateNormalFullCovariance(ExponentialFamilyDistribution,
                                        tfp_dists.MultivariateNormalFullCovariance):
+    """The multivariate normal distribution is both an exponential family
+    distribution as well as a conjugate prior (for the mean of a multivariate
+    normal distribution)."""
+
     @classmethod
-    def from_params(cls, params):
-        return cls(*params)
+    def from_params(cls, params, **kwargs):
+        return cls(*params, **kwargs)
 
     @staticmethod
-    def sufficient_statistics(data):
-        return (np.ones(data.shape[:-1]),
-                data,
-                np.einsum('...i,...j->...ij', data, data))
+    def sufficient_statistics(data, **kwargs):
+        if "covariance_matrix" in kwargs:
+            Sigma = kwargs["covariance_matrix"]
+            transpose = lambda x: np.swapaxes(x, -1, -2)
+            return (transpose(np.linalg.solve(Sigma, transpose(data))),)
+        else:
+            return (np.ones(data.shape[:-1]),
+                    data,
+                    np.einsum('...i,...j->...ij', data, data))
 
 
 class MultivariateNormalTriL(ExponentialFamilyDistribution,

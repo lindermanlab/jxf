@@ -414,15 +414,16 @@ class CompoundDistribution:
 # their conjugate priors
 __EXPFAM_DISTRIBUTIONS = dict()
 
-def register_expfam(distribution, prior):
-    __EXPFAM_DISTRIBUTIONS[distribution] = prior
+def register_expfam(distribution, prior, keywords=()):
+    expfam = (distribution, keywords)
+    __EXPFAM_DISTRIBUTIONS[expfam] = prior
 
 
-def get_expfam(distribution):
-    if inspect.isclass(distribution):
-        return __EXPFAM_DISTRIBUTIONS[distribution]
-    else:
-        return __EXPFAM_DISTRIBUTIONS[type(distribution)]
+def get_expfam(distribution, **kwargs):
+    keywords = tuple(kw for kw in kwargs.keys())
+    distribution = distribution if inspect.isclass(distribution) else type(distribution)
+    expfam = (distribution, keywords)
+    return __EXPFAM_DISTRIBUTIONS[expfam]
 
 
 # Initialize global dictionary to link compound distributions and
